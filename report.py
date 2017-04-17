@@ -1,5 +1,6 @@
 import markdown
 import dominate
+import bunch
 
 from github import Github
 from clint import arguments
@@ -15,24 +16,26 @@ def print_header():
         r.add(th('TITLE'))
         r.add(th('ASSIGNEE'))
         r.add(th('PRIORITY'))
-        r.add(th('STATUS'))
+        r.add(th('LAST COMMENT'))
 
 
-def print_report(issue, assignee, status, priority):
+def print_report(issue, assignee, last_comment, priority):
     r = tr()
     with r:
         td(a(issue.number, href=issue.html_url))
         td(issue.title, width='200')
         td(raw(assignee), width='200')
         td(raw(priority), width='100')
-        td(raw(status))
+        td(raw(last_comment))
 
 
 def process(repos, label):
     print_header()
     for repo in repos:
         issues = repo.get_issues()
+        decorated_issues = []
         for issue in issues:
+            decorated_issue = bunch.Bunch()
             if label is not None:
                 if label in str(issue.labels):
                     if issue.assignee is not None and issue.assignee.name is None:
@@ -46,10 +49,17 @@ def process(repos, label):
                     else:
                         priority = markdown.markdown('**Please set priority!**')
                     if issue.comments != 0:
-                        status = [markdown.markdown(comment.body) for comment in issue.get_comments()][-1]
+                        last_comment = [markdown.markdown(comment.body) for comment in issue.get_comments()][-1]
                     else:
-                        status = markdown.markdown('**Please add status comment!**')
-                    print_report(issue, assignee, status, priority)
+                        last_comment = markdown.markdown('**Please add last_comment comment!**')
+                    decorated_issue['issue'] = issue
+                    decorated_issue['assignee'] = assignee
+                    decorated_issue['priority'] = priority
+                    decorated_issue['last_comment'] = last_comment
+                    decorated_issues.append(decorated_issue)
+        decorated_issues.sort(key=lambda issue: issue.priority)
+        for decorated_issue in decorated_issues:
+            print_report(decorated_issue.issue, decorated_issue.assignee, decorated_issue.last_comment, decorated_issue.priority)
 
 
 def main():
