@@ -1,6 +1,7 @@
 appdirs==1.4.3
 appnope==0.1.0
 args==0.1.0
+bunch==1.0.1
 clint==0.5.1
 decorator==4.0.11
 dominate==2.3.1
