@@ -44,15 +44,13 @@ def decorate(issue):
         last_comment = [markdown.markdown(comment.body) for comment in issue.get_comments()][-1]
     else:
         last_comment = markdown.markdown('**Please add last_comment comment!**')
-    return assignee, priority, last_comment
+    return {'issue': issue, 'assignee': assignee, 'priority': priority, 'last_comment': last_comment}
 
 
-def assign(issue, assignee, priority, last_comment):
+def assign(**kwargs):
     decorated_issue = bunch.Bunch()
-    decorated_issue['issue'] = issue
-    decorated_issue['assignee'] = assignee
-    decorated_issue['priority'] = priority
-    decorated_issue['last_comment'] = last_comment
+    for k, v in kwargs.items():
+        decorated_issue[k] = v
     return decorated_issue
 
 
@@ -61,8 +59,8 @@ def assemble(issues, label):
     for issue in issues:
         if label is not None:
             if label in str(issue.labels):
-                assignee, priority, last_comment = decorate(issue)
-                decorated_issue = assign(issue, assignee, priority, last_comment)
+                d = decorate(issue)
+                decorated_issue = assign(**d)
                 decorated_issues.append(decorated_issue)
     return decorated_issues
 
