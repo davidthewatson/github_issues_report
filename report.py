@@ -19,47 +19,62 @@ def print_header():
         r.add(th('LAST COMMENT'))
 
 
-def print_report(issue, assignee, last_comment, priority):
+def print_report(decorated_issue):
     r = tr()
     with r:
-        td(a(issue.number, href=issue.html_url))
-        td(issue.title, width='200')
-        td(raw(assignee), width='200')
-        td(raw(priority), width='100')
-        td(raw(last_comment))
+        td(a(decorated_issue.issue.number, href=decorated_issue.issue.html_url))
+        td(decorated_issue.issue.title, width='200')
+        td(raw(decorated_issue.assignee), width='200')
+        td(raw(decorated_issue.priority), width='100')
+        td(raw(decorated_issue.last_comment))
+
+
+def decorate(issue):
+    if issue.assignee is not None and issue.assignee.name is None:
+        assignee = issue.assignee.login
+    elif issue.assignee is not None and issue.assignee.name is not None:
+        assignee = issue.assignee.name
+    else:
+        assignee = markdown.markdown('**Please assign!**')
+    if str(issue.labels).find('priority') > -1:
+        priority = [l.name.split(':')[1] for l in issue.labels if 'priority' in l.name][0]
+    else:
+        priority = markdown.markdown('**Please set priority!**')
+    if issue.comments != 0:
+        last_comment = [markdown.markdown(comment.body) for comment in issue.get_comments()][-1]
+    else:
+        last_comment = markdown.markdown('**Please add last_comment comment!**')
+    return assignee, priority, last_comment
+
+
+def assign(issue, assignee, priority, last_comment):
+    decorated_issue = bunch.Bunch()
+    decorated_issue['issue'] = issue
+    decorated_issue['assignee'] = assignee
+    decorated_issue['priority'] = priority
+    decorated_issue['last_comment'] = last_comment
+    return decorated_issue
+
+
+def assemble(issues, label):
+    decorated_issues = []
+    for issue in issues:
+        if label is not None:
+            if label in str(issue.labels):
+                assignee, priority, last_comment = decorate(issue)
+                decorated_issue = assign(issue, assignee, priority, last_comment)
+                decorated_issues.append(decorated_issue)
+    return decorated_issues
 
 
 def process(repos, label):
     print_header()
     for repo in repos:
         issues = repo.get_issues()
-        decorated_issues = []
-        for issue in issues:
-            decorated_issue = bunch.Bunch()
-            if label is not None:
-                if label in str(issue.labels):
-                    if issue.assignee is not None and issue.assignee.name is None:
-                        assignee = issue.assignee.login
-                    elif issue.assignee is not None and issue.assignee.name is not None:
-                        assignee = issue.assignee.name
-                    else:
-                        assignee = markdown.markdown('**Please assign!**')
-                    if str(issue.labels).find('priority') > -1:
-                        priority = [l.name.split(':')[1] for l in issue.labels if 'priority' in l.name][0]
-                    else:
-                        priority = markdown.markdown('**Please set priority!**')
-                    if issue.comments != 0:
-                        last_comment = [markdown.markdown(comment.body) for comment in issue.get_comments()][-1]
-                    else:
-                        last_comment = markdown.markdown('**Please add last_comment comment!**')
-                    decorated_issue['issue'] = issue
-                    decorated_issue['assignee'] = assignee
-                    decorated_issue['priority'] = priority
-                    decorated_issue['last_comment'] = last_comment
-                    decorated_issues.append(decorated_issue)
+        decorated_issues = assemble(issues, label)
         decorated_issues.sort(key=lambda issue: issue.priority)
         for decorated_issue in decorated_issues:
-            print_report(decorated_issue.issue, decorated_issue.assignee, decorated_issue.last_comment, decorated_issue.priority)
+            print_report(decorated_issue)
 
 
 def main():
