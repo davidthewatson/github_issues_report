@@ -8,7 +8,7 @@ from dominate.tags import table, thead, tbody, tr, td, th, h1, a
 from dominate.util import raw
 
 
-def print_header():
+def make_table_header():
     h = thead()
     with h:
         r = tr()
@@ -19,7 +19,7 @@ def print_header():
         r.add(th('LAST COMMENT'))
 
 
-def print_report(decorated_issue):
+def make_table_row(decorated_issue):
     r = tr()
     with r:
         td(a(decorated_issue.issue.number, href=decorated_issue.issue.html_url))
@@ -29,7 +29,7 @@ def print_report(decorated_issue):
         td(raw(decorated_issue.last_comment))
 
 
-def decorate(issue):
+def assemble_attribue_dict(issue):
     if issue.assignee is not None and issue.assignee.name is None:
         assignee = issue.assignee.login
     elif issue.assignee is not None and issue.assignee.name is not None:
@@ -47,32 +47,32 @@ def decorate(issue):
     return {'issue': issue, 'assignee': assignee, 'priority': priority, 'last_comment': last_comment}
 
 
-def assign(**kwargs):
+def build_bunch(**kwargs):
     decorated_issue = bunch.Bunch()
     for k, v in kwargs.items():
         decorated_issue[k] = v
     return decorated_issue
 
 
-def assemble(issues, label):
+def build_decorated_issues(issues, label):
     decorated_issues = []
     for issue in issues:
         if label is not None:
             if label in str(issue.labels):
-                d = decorate(issue)
-                decorated_issue = assign(**d)
+                d = assemble_attribue_dict(issue)
+                decorated_issue = build_bunch(**d)
                 decorated_issues.append(decorated_issue)
     return decorated_issues
 
 
-def process(repos, label):
-    print_header()
+def make_table(repos, label):
+    make_table_header()
     for repo in repos:
         issues = repo.get_issues()
-        decorated_issues = assemble(issues, label)
+        decorated_issues = build_decorated_issues(issues, label)
         decorated_issues.sort(key=lambda issue: issue.priority)
         for decorated_issue in decorated_issues:
-            print_report(decorated_issue)
+            make_table_row(decorated_issue)
 
 
 def main():
@@ -93,7 +93,7 @@ def main():
     with d.body:
         h1(title)
         with table(border='1', width='1024', cellpadding='10').add(tbody()):
-            process(repos, label)
+            make_table(repos, label)
     print(d)
 
 
