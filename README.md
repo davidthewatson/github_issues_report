@@ -1,6 +1,8 @@
 # Generate Github Issues Report
 
-## Install
+You can run this code locally or using docker. Pick your poison:
+
+## Local Install
 
     pyenv local 3.5.2
     mkvirtualenv github_issues_report
@@ -9,6 +11,14 @@
 Usage:
 
     python report.py <GITHUB_TOKEN> <GITHUB_REPO> <GITHUB_ORG> <GITHUB_ISSUE_LABEL> >report.html
+
+## Docker Container
+    docker build .
+    docker images
+    docker tag <ID_OF_WHAT_YOU_JUST_BUILT> your_dockerhub_user/github_issues_report:latest
+    docker run davidthewatson/github_issues_report python report.py <YOUR_API_TOKEN> <YOUR_REPO> <YOUR_ORG> <YOUR_LABEL> >report.html
+
+The result is the same regardless of whether you run locally or via docker container.
 
 The code in this repo generates a report based on the arguments by hitting the Github API and returning an HTML table of issues like this:
 
