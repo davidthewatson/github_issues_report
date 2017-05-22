@@ -1,0 +1,37 @@
+apiVersion: batch/v2alpha1
+kind: CronJob
+metadata:
+  name: github-issues-report
+spec:
+  schedule: "0 6 * * 1-5"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: report-cron
+            image: rentjunglerobot/github_issues_report
+            env:
+            - name: github_token
+              valueFrom:
+                secretKeyRef:
+                  name: github-creds
+                  key: github-token
+            - name: github_repository
+              valueFrom:
+                secretKeyRef:
+                  name: github-creds
+                  key: github-repository
+            - name: github_organization
+              valueFrom:
+                secretKeyRef:
+                  name: github-creds
+                  key: github-organization
+            - name: github_tag
+              valueFrom:
+                secretKeyRef:
+                  name: github-creds
+                  key: github-tag
+            command: ["python"]
+            args: ["report.py", "$(github_token)", "$(github_repository)", "$(github_organization)", "$(github_tag)"]
+          restartPolicy: Never
