@@ -1,7 +1,6 @@
 import markdown
 import dominate
 import bunch
-
 from github import Github
 from clint import arguments
 from dominate.tags import table, thead, tbody, tr, td, th, h1, a
@@ -14,7 +13,7 @@ def make_table_header():
         r = tr()
         r.add(th('NUMBER'))
         r.add(th('TITLE'))
-        r.add(th('ASSIGNEE'))
+        r.add(th('ASSIGNEES'))
         r.add(th('PRIORITY'))
         r.add(th('LAST COMMENT'))
 
@@ -24,18 +23,25 @@ def make_table_row(decorated_issue):
     with r:
         td(a(decorated_issue.issue.number, href=decorated_issue.issue.html_url))
         td(decorated_issue.issue.title, width='200')
-        td(raw(decorated_issue.assignee), width='200')
+        td(raw(decorated_issue.assignees), width='200')
         td(raw(decorated_issue.priority), width='100')
         td(raw(decorated_issue.last_comment))
 
 
-def assemble_attribue_dict(issue):
-    if issue.assignee is not None and issue.assignee.name is None:
-        assignee = issue.assignee.login
-    elif issue.assignee is not None and issue.assignee.name is not None:
-        assignee = issue.assignee.name
+def github_name(github_user):
+    if github_user.name is not None:
+        return github_user.name
     else:
-        assignee = markdown.markdown('**Please assign!**')
+        return github_user.login
+
+
+def assemble_attribue_dict(issue):
+    if issue.assignees is not None:
+        assignees = ', '.join((github_name(assignee) for assignee in issue.assignees))
+    elif issue.assignee is not None:
+        assignees = github_name(issue.assignee)
+    else:
+        assignees = markdown.markdown('**Please assign!**')
     if str(issue.labels).find('priority') > -1:
         priority = [l.name.split(':')[1] for l in issue.labels if 'priority' in l.name][0]
     else:
@@ -44,7 +50,7 @@ def assemble_attribue_dict(issue):
         last_comment = [markdown.markdown(comment.body) for comment in issue.get_comments()][-1]
     else:
         last_comment = markdown.markdown('**Please add last_comment comment!**')
-    return {'issue': issue, 'assignee': assignee, 'priority': priority, 'last_comment': last_comment}
+    return {'issue': issue, 'assignees': assignees, 'priority': priority, 'last_comment': last_comment}
 
 
 def build_bunch(**kwargs):
@@ -54,14 +60,19 @@ def build_bunch(**kwargs):
     return decorated_issue
 
 
-def build_decorated_issues(issues, label):
+def filter_issue(issue, label):
+    if label is not None:
+        if label in str(issue.labels):
+            return True
+    return False
+
+
+def build_decorated_issues(issues):
     decorated_issues = []
     for issue in issues:
-        if label is not None:
-            if label in str(issue.labels):
-                d = assemble_attribue_dict(issue)
-                decorated_issue = build_bunch(**d)
-                decorated_issues.append(decorated_issue)
+        d = assemble_attribue_dict(issue)
+        decorated_issue = build_bunch(**d)
+        decorated_issues.append(decorated_issue)
     return decorated_issues
 
 
@@ -69,18 +80,20 @@ def make_table(repos, label):
     make_table_header()
     for repo in repos:
         issues = repo.get_issues()
-        decorated_issues = build_decorated_issues(issues, label)
+        issues = filter(lambda x: filter_issue(x, label), issues)
+        decorated_issues = build_decorated_issues(issues)
         decorated_issues.sort(key=lambda issue: issue.priority)
         for decorated_issue in decorated_issues:
             make_table_row(decorated_issue)
 
 
-def main():
-    args = arguments.Args()
-    if len(args) < 4:
-        print('Returns Github Issues from the Github API based on the arguments and generates an HTML table.')
-        print('Usage: python report.py <GITHUB_TOKEN> <GITHUB_REPO> <GITHUB_ORG> <GITHUB_ISSUE_LABEL> >report.html')
-        exit(1)
+def main(args=None):
+    if args == None:
+        args = arguments.Args()
+        if len(args) < 4:
+            print('Returns Github Issues from the Github API based on the arguments and generates an HTML table.')
+            print('Usage: python report.py <GITHUB_TOKEN> <GITHUB_REPO> <GITHUB_ORG> <GITHUB_ISSUE_LABEL> >report.html')
+            exit(1)
     token = args.get(0)
     repository = args.get(1)
     organization = args.get(2)
