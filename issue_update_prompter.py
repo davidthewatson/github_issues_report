@@ -101,10 +101,8 @@ def process_notification_data(notification_data):
     return notification_data['criteria']
 
 
-def get_notification_criteria(config_file_path=None):
+def get_notification_criteria(config_file_path):
     # todo: should use a schema file to make sure format is correct
-    if config_file_path is None:
-        config_file_path = 'config.yaml'
     with open(config_file_path, 'r') as yaml_file:
         notification_data = yaml.load(yaml_file)
     criteria = process_notification_data(notification_data)
