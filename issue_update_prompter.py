@@ -5,7 +5,7 @@ import bunch
 import yaml
 from datetime import datetime
 from github import Github
-from clint import arguments
+import argparse
 from dominate.tags import table, tbody, h3
 import report
 import smtplib
@@ -119,8 +119,16 @@ def sort_issue_notifications_into_emails(issue_notifications):
     emails = []
     for note_group in notification_groups.values():
         issues = [notification['issue'] for notification in note_group]
-        emails.append({'to': note_group[0]['recipients'], 'body': make_email_body(issues)})
+        emails.append(bunch.Bunch({'to': note_group[0]['recipients'], 'body': make_email_body(issues),
+                                   'issues': issues}))
     return emails
+
+
+def print_email_debug(emails):
+    print('Email Summary\n(Add --send flag to send out emails)')
+    for email in emails:
+        issue_titles = '    \n'.join(issue.title for issue in email.issues)
+        print('recipients {} are getting {} emails:\n    {}'.format(emails.to, len(email.issues), issue_titles))
 
 
 def send_email(subject, body, to=[], cc=[], bcc=[]):
@@ -143,29 +151,35 @@ def send_email(subject, body, to=[], cc=[], bcc=[]):
     server.sendmail(msg['From'], to + cc + bcc, msg.as_string())
 
 
+def get_arg_parser():
+    parser = argparse.ArgumentParser(description='Sends email reminders for Github Issues that need updates.')
+    parser.add_argument('-s', '--send', dest='send', action='store_true', help="print email details but don't send")
+    parser.add_argument('github_token', type=str, help='Github authentication token')
+    parser.add_argument('github_repo', type=str, help='Target Github Repository')
+    parser.add_argument('github_org', type=str, help='Target Github Organization')
+    parser.add_argument('config_file_path', type=str, nargs='?', help='Full-path to config file', default='config.yaml')
+    args = parser.parse_args()
+    return args
+
+
 def main(args=None):
     if args is None:
-        args = arguments.Args()
-        if len(args) < 3:
-            print('Sends email reminders for Github Issues that need updates.')
-            print('Usage: python report.py <GITHUB_TOKEN> <GITHUB_REPO> <GITHUB_ORG> [<CONFIG_FILE_PATH>]')
-            exit(1)
-    token = args.get(0)
-    repository = args.get(1)
-    organization = args.get(2)
-    if len(args) > 3:
-        config_file_path = args.get(3)
-    else:
-        config_file_path = None
-    if token is not None and repository is not None and organization is not None:
-        g = Github(token)
-        repos = g.get_organization(organization).get_repos(repository)
+        args = get_arg_parser()
+    token = args.github_token
+    repository = args.github_repo
+    organization = args.github_org
+    config_file_path = args.config_file_path
+    g = Github(token)
+    repos = g.get_organization(organization).get_repos(repository)
+
     criteria = get_notification_criteria(config_file_path)
     issue_notifications = get_notification_from_repos(criteria, repos)
     emails = sort_issue_notifications_into_emails(issue_notifications)
-    for email in emails:
-        send_email('Please update the following github issues', **email)
-
+    if args.send:
+        for email in emails:
+            send_email('Please update the following github issues', email.body, email.to)
+    else:
+        print_email_debug(emails)
 
 if __name__ == '__main__':
     main()
