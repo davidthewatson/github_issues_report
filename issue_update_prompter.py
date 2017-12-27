@@ -94,6 +94,8 @@ def process_notification_data(notification_data):
                 timeframe['recipients'] = notification_data['severity'][severity]
                 if 'catchup' in notification_data and notification_data['catchup'] and 'catchup' not in timeframe:
                     timeframe['catchup'] = True
+                if 'days_multiplier' in notification_data:
+                    timeframe['days'] = int(notification_data['days_multiplier'] * timeframe['days'])
             notification_data['criteria'][label] = list(map(bunch.Bunch, timeframes))
     else:
         raise(Exception('This system cannot function without notification "criteria" being specified'))
@@ -122,11 +124,11 @@ def sort_issue_notifications_into_emails(issue_notifications):
 
 
 def print_email_debug(emails):
-    print('Email Summary\n(Add --send flag to send out emails)\n')
+    print('Email Summary\n(Add --send flag to send out emails)')
+    print('{} emails containing {} issues\n'.format(len(emails), sum(map(lambda x: len(x.issues), emails))))
     for email in emails:
-        issue_titles = '\n    '.join(issue.title for issue in email.issues)
+        issue_titles = '\n    '.join('"{}" {}'.format(issue.title, issue.html_url) for issue in email.issues)
         print('recipients {} are getting {} emails:\n    {}'.format(email.to, len(email.issues), issue_titles))
-
 
 def send_email(subject, body, to=[], cc=[], bcc=[]):
     """
