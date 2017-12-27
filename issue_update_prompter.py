@@ -38,7 +38,7 @@ def time_to_notify(timeframe, last_updated):
     target_days (int or float): number of days at which we want to notify
     last_updated (datetime): datetime object from github of last time issues was updated """
     day_delta = (datetime.now() - last_updated).days
-    if 'catch-up' in timeframe and timeframe.catch-up:
+    if 'catchup' in timeframe and timeframe.catchup:
         return day_delta >= timeframe.days
     else:
         return day_delta == timeframe.days
@@ -51,21 +51,20 @@ def generate_recipients(timeframe, issue):
             if assignee.email is None:
                 print('''Github user {} can't be contacted as they don't 
                       have a public email set. Found in issue {}.'''.format(assignee, issue))
-
         list(map(debug_assignees, issue.assignees))
         assignee_emails = [assignee.email for assignee in issue.assignees if assignee.email]
         if not assignee_emails:
-            pass
-            # todo: what do we want to do with issues that are not assigned? PM or nothing?
+            issue.add_to_labels('triage')
         recipients.remove('AUTHORS')
         recipients += assignee_emails
+    return list(set(recipients))  # removing duplicates
 
 
 def get_notification_from_issues(criteria, issues):
     notifications = []
     notification_labels = set(criteria.keys())
     for issue in issues:
-        issue_labels = set(str(issue.name) for issue in issue.labels)
+        issue_labels = set(str(label.name) for label in issue.labels)
         target_labels = issue_labels & notification_labels
         for target_label in target_labels:
             # reversed sorted order so if there is a different notification level at 60 and one at 30, only the 60 is sent
@@ -93,8 +92,8 @@ def process_notification_data(notification_data):
                 else:
                     severity = notification_data['default_severity']
                 timeframe['recipients'] = notification_data['severity'][severity]
-                if 'catch-up' in notification_data and notification_data['catch-up']:
-                    timeframe['catch-up'] = True
+                if 'catchup' in notification_data and notification_data['catchup'] and 'catchup' not in timeframe:
+                    timeframe['catchup'] = True
             notification_data['criteria'][label] = list(map(bunch.Bunch, timeframes))
     else:
         raise(Exception('This system cannot function without notification "criteria" being specified'))
@@ -123,10 +122,10 @@ def sort_issue_notifications_into_emails(issue_notifications):
 
 
 def print_email_debug(emails):
-    print('Email Summary\n(Add --send flag to send out emails)')
+    print('Email Summary\n(Add --send flag to send out emails)\n')
     for email in emails:
-        issue_titles = '    \n'.join(issue.title for issue in email.issues)
-        print('recipients {} are getting {} emails:\n    {}'.format(emails.to, len(email.issues), issue_titles))
+        issue_titles = '\n    '.join(issue.title for issue in email.issues)
+        print('recipients {} are getting {} emails:\n    {}'.format(email.to, len(email.issues), issue_titles))
 
 
 def send_email(subject, body, to=[], cc=[], bcc=[]):
@@ -175,9 +174,10 @@ def main(args=None):
     emails = sort_issue_notifications_into_emails(issue_notifications)
     if args.send:
         for email in emails:
-            send_email('Please update the following github issues', email.body, email.to)
+            send_email('Please Update the Following Github Issues', email.body, email.to)
     else:
         print_email_debug(emails)
+
 
 if __name__ == '__main__':
     main()
