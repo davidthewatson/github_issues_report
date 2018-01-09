@@ -13,7 +13,7 @@ from email.mime.text import MIMEText
 
 
 def make_email_body(issues):
-    title = 'BETA:\nPlease update or close the following issues so Bianca and Spencer know what is going on.'
+    title = 'BETA:\nPlease update, close or change the priority of the following issues so your team knows what is going on.'
     d = dominate.document(title=title)
     with d.body:
         h3(title)
@@ -129,6 +129,7 @@ def print_email_debug(emails):
     for email in emails:
         issue_titles = '\n    '.join('"{}" {}'.format(issue.title, issue.html_url) for issue in email.issues)
         print('recipients {} are getting {} emails:\n    {}'.format(email.to, len(email.issues), issue_titles))
+
 
 def send_email(subject, body, to=[], cc=[], bcc=[]):
     """
