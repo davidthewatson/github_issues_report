@@ -74,7 +74,7 @@ When it's formatted:
 
 ## issue_update_prompter.py
 
-The issue update prompting tool builds off of the basic issue report. It checks the target github repository, identifies issues which should be updated and emails issue tables to those responsible. The indentification of issues require update is based on a yaml config fill that defines how often issues with certain tags should be updated. The emails are sent to the public email addresses associated with the github assignees of each issue. The emails are sent from 'localhost' and require that an smtp server to running on the host machine.
+The issue update prompting tool builds off of the basic issue report. It checks the target github repository, identifies issues which should be updated and emails issue tables to those responsible. The indentification of issues that require update is based on a yaml config that defines how often issues with certain tags should be updated. The emails are sent to the public email addresses associated with the github assignees of each issue. The emails are sent from 'localhost' and require that an smtp server be running on the host machine.
 
 An example email is below:
 
