@@ -93,3 +93,4 @@ ENV/
 
 # github_issues_report specific
 config.yaml
+scrap.py
