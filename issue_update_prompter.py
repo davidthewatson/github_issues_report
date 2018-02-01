@@ -194,7 +194,7 @@ def main(args=None):
     if args.send or args.test_email:
         for email in emails:
             if args.test_email:
-                send_email('Please Update the Following Github Issues', email.body, email.test_email)
+                send_email('Please Update the Following Github Issues', email.body, args.test_email)
             else:
                 send_email('Please Update the Following Github Issues', email.body, email.to)
     else:
