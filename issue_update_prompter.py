@@ -12,6 +12,9 @@ import smtplib
 from email.mime.text import MIMEText
 
 
+# todo: with how the amount if piping needed for notification_data, this should all become an object
+
+
 def make_email_body(issues):
     title = 'BETA:\nPlease update, close or change the priority of the following issues so your team knows what is going on.'
     d = dominate.document(title=title)
@@ -26,8 +29,8 @@ def make_email_body(issues):
     return str(d)
 
 
-def get_notification_from_repos(criteria, repos):
-    notification_lists = [get_notification_from_issues(criteria, repo.get_issues()) for repo in repos]
+def get_notification_from_repos(notification_data, repos):
+    notification_lists = [get_notification_from_issues(notification_data, repo.get_issues()) for repo in repos]
     notifications = list(itertools.chain.from_iterable(notification_lists))
     return notifications
 
@@ -44,7 +47,17 @@ def time_to_notify(timeframe, last_updated):
         return day_delta == timeframe.days
 
 
-def generate_recipients(timeframe, issue):
+def get_assignee_emails(issue, notification_data):
+    email_overrides = notification_data['user_emails_overrides']
+    def try_replace_email_w_overrides(assignee):
+        if assignee.login in email_overrides:
+            return email_overrides[assignee.login]
+        elif not notification_data['override_emails_only'] and assignee.email:
+            return assignee.email
+    return list(filter(None, map(try_replace_email_w_overrides, issue.assignees)))
+
+
+def generate_recipients(timeframe, issue, notification_data):
     recipients = copy.deepcopy(timeframe.recipients)
     if 'AUTHORS' in recipients:
         def debug_assignees(assignee):
@@ -52,7 +65,7 @@ def generate_recipients(timeframe, issue):
                 print('''Github user {} can't be contacted as they don't 
                       have a public email set. Found in issue {}.'''.format(assignee, issue))
         list(map(debug_assignees, issue.assignees))
-        assignee_emails = [assignee.email for assignee in issue.assignees if assignee.email]
+        assignee_emails = get_assignee_emails(issue, notification_data)
         if not assignee_emails:
             issue.add_to_labels('triage')
         recipients.remove('AUTHORS')
@@ -60,17 +73,17 @@ def generate_recipients(timeframe, issue):
     return list(set(recipients))  # removing duplicates
 
 
-def get_notification_from_issues(criteria, issues):
+def get_notification_from_issues(notification_data, issues):
     notifications = []
-    notification_labels = set(criteria.keys())
+    notification_labels = set(notification_data['criteria'].keys())
     for issue in issues:
         issue_labels = set(str(label.name) for label in issue.labels)
         target_labels = issue_labels & notification_labels
         for target_label in target_labels:
             # reversed sorted order so if there is a different notification level at 60 and one at 30, only the 60 is sent
-            for timeframe in sorted(criteria[target_label], key=lambda x: x.days, reverse=True):
+            for timeframe in sorted(notification_data['criteria'][target_label], key=lambda x: x.days, reverse=True):
                 if time_to_notify(timeframe, issue.updated_at):
-                    recipients = generate_recipients(timeframe, issue)
+                    recipients = generate_recipients(timeframe, issue, notification_data)
                     if recipients:
                         notifications.append({'issue': issue, 'recipients': recipients})
                     break
@@ -99,7 +112,7 @@ def process_notification_data(notification_data):
             notification_data['criteria'][label] = list(map(bunch.Bunch, timeframes))
     else:
         raise(Exception('This system cannot function without notification "criteria" being specified'))
-    return notification_data['criteria']
+    return notification_data
 
 
 def get_notification_criteria(config_file_path):
@@ -128,7 +141,8 @@ def print_email_debug(emails):
     print('{} emails containing {} issues\n'.format(len(emails), sum(map(lambda x: len(x.issues), emails))))
     for email in emails:
         issue_titles = '\n    '.join('"{}" {}'.format(issue.title, issue.html_url) for issue in email.issues)
-        print('recipients {} are getting {} emails:\n    {}'.format(email.to, len(email.issues), issue_titles))
+        print('recipients {} are getting pinged on {} issues:\n    {}'.format(email.to,
+                                                                              len(email.issues), issue_titles))
 
 
 def send_email(subject, body, to=[], cc=[], bcc=[]):
@@ -144,6 +158,7 @@ def send_email(subject, body, to=[], cc=[], bcc=[]):
     msg['Subject'] = subject
     email_from = 'github_msg_bot@bot_machine.com'  # todo: figure this out
     msg['From'] = email_from
+    msg['To'] = ', '.join(to)
     if cc:
         msg['Cc'] = ', '.join(cc)
 
@@ -154,6 +169,7 @@ def send_email(subject, body, to=[], cc=[], bcc=[]):
 def get_arg_parser():
     parser = argparse.ArgumentParser(description='Sends email reminders for Github Issues that need updates.')
     parser.add_argument('-s', '--send', dest='send', action='store_true', help="print email details but don't send")
+    parser.add_argument('--send_to_test_target', dest='test_email', type=str, help="send emails, but to test address. Overrides -s.")
     parser.add_argument('github_token', type=str, help='Github authentication token')
     parser.add_argument('github_repo', type=str, help='Target Github Repository')
     parser.add_argument('github_org', type=str, help='Target Github Organization')
@@ -175,9 +191,12 @@ def main(args=None):
     criteria = get_notification_criteria(config_file_path)
     issue_notifications = get_notification_from_repos(criteria, repos)
     emails = sort_issue_notifications_into_emails(issue_notifications)
-    if args.send:
+    if args.send or args.test_email:
         for email in emails:
-            send_email('Please Update the Following Github Issues', email.body, email.to)
+            if args.test_email:
+                send_email('Please Update the Following Github Issues', email.body, email.test_email)
+            else:
+                send_email('Please Update the Following Github Issues', email.body, email.to)
     else:
         print_email_debug(emails)
 
