@@ -11,10 +11,10 @@ def make_table_header():
     h = thead()
     with h:
         r = tr()
-        r.add(th('NUMBER'))
-        r.add(th('TITLE'))
-        r.add(th('ASSIGNEES'))
-        r.add(th('PRIORITY'))
+        r.add(th('ID', style='width:5%'))
+        r.add(th('TITLE', style='width:20%'))
+        r.add(th('ASSIGNEES', style='width:5%'))
+        r.add(th('PRIORITY', style='width:5%'))
         r.add(th('LAST COMMENT'))
 
 
@@ -22,9 +22,9 @@ def make_table_row(decorated_issue):
     r = tr()
     with r:
         td(a(decorated_issue.issue.number, href=decorated_issue.issue.html_url))
-        td(decorated_issue.issue.title, width='200')
-        td(raw(decorated_issue.assignees), width='200')
-        td(raw(decorated_issue.priority), width='100')
+        td(decorated_issue.issue.title)
+        td(raw(decorated_issue.assignees))
+        td(raw(decorated_issue.priority))
         td(raw(decorated_issue.last_comment))
 
 
@@ -105,7 +105,7 @@ def main(args=None):
     d = dominate.document(title=title)
     with d.body:
         h1(title)
-        with table(border='1', width='1024', cellpadding='10').add(tbody()):
+        with table(border='1', width='850', cellpadding='6').add(tbody()):
             make_table(repos, label)
     print(d)
 
