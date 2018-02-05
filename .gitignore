@@ -95,3 +95,4 @@ ENV/
 config.yaml
 scrap.py
 env.sh
+issue_report.html
