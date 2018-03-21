@@ -1,0 +1,22 @@
+catchup: false
+criteria:
+  priority:0:
+  - {days: 2}
+  - {days: 4}
+  - {days: 5, severity: pm_and_author}
+  priority:1:
+  - {days: 5}
+  - {days: 10}
+  - {days: 14, severity: pm_and_author}
+  priority:2:
+  - {days: 31}
+  - {days: 45}
+  - {days: 60, severity: pm_and_author}
+days_multiplier: 1
+default_severity: author
+severity:
+  author: [AUTHORS]
+  pm_and_author: [AUTHORS, qwer@qwer.com]
+override_emails_only: true
+user_emails_overrides: {qwer: qwer@qwer.com, asdf: asdf@asdf.com,
+  wert: wert@wert.com, sdfg: sdfg@sdfg.com}
