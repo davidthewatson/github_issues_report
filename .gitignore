@@ -96,3 +96,4 @@ config.yaml
 scrap.py
 env.sh
 issue_report.html
+config_new_version.yaml
