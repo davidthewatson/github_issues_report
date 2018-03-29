@@ -72,9 +72,17 @@ When it's formatted:
   </tbody>
 </table>
 
-## issue_update_prompter.py
+## issue_reminders.py
 
-The issue update prompting tool builds off of the basic issue report. It checks the target github repository, identifies issues which should be updated and emails issue tables to those responsible. The indentification of issues that require update is based on a yaml config that defines how often issues with certain tags should be updated. The emails are sent to the public email addresses associated with the github assignees of each issue. The emails are sent from 'localhost' and require that an smtp server be running on the host machine.
+The issue reminder tool builds off of the basic issue report. It checks the target github repository, identifies issues which should be updated and emails issue tables to those responsible. The indentification of issues that require update is based on a yaml config that defines how often issues with certain tags should be updated. The emails are sent to the public email addresses associated with the github assignees of each issue (unless overriden in the config file). The emails are sent from 'localhost' and require that an smtp server be running on the host machine.
+
+### Design
+
+The program is designed to work in a stateless fashion to make it easier to maintain. It is designed to run once each day, at the same time of day, and sent emails if the int() of the time that has passed since the last post was made is equal to the criteria in the config. This opens it up to edge case issues, but in this first cut this has worked fine. 
+
+When starting this system, there may be some issues that are passed all the normal reminder criteria. In the future, there will probably be a way to specific repeating reminders out arbirarily timeframes. In this first cut, we have the 'catchup' flag in the config file, which will send emails for all issues that are over any criteria. Once these are addressed, you can turn it off and set it to run daily.
+
+### Example Out
 
 An example email is below:
 
